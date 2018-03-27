@@ -1,0 +1,65 @@
+{
+    "variables": {
+        "version": "{{env `RANCHEROS_VERSION`}}",
+        "iso_checksum": "{{env `RANCHEROS_MD5_ISO_CHECKSUM`}}",
+        "ssh_public_key": "",
+        "ssh_private_key_file": "",
+        "vm_description": "RancherOS",
+        "organization": "",
+        "cloud_token": "{{env `HASHICORP_VAGRANT_CLOUD_TOKEN`}}"
+    },
+    "builders": [
+        {
+            "type": "virtualbox-iso",
+            "vm_name": "rancherOS",
+            "guest_os_type": "Linux_64",
+            "iso_url": "https://github.com/rancherio/os/releases/download/v{{user `version`}}/rancheros.iso",
+            "iso_checksum": "{{user `iso_checksum`}}",
+            "iso_checksum_type": "md5",
+            "iso_interface": "sata",
+            "hard_drive_interface": "sata",
+            "hard_drive_nonrotational": true,
+            "ssh_private_key_file": "{{user `ssh_private_key_file`}}",
+            "boot_wait": "60s",
+            "disk_size": "24000",
+            "guest_additions_mode": "disable",
+            "vboxmanage": [
+              [ "modifyvm", "{{.Name}}", "--memory", "1024" ],
+              [ "modifyvm", "{{.Name}}", "--cpus", "1" ]
+            ],
+            "boot_command": [
+              "echo \"#cloud-config\" >> cloud-config.yml<enter>",
+              "echo \"ssh_authorized_keys:\" >> cloud-config.yml<enter>",
+              "echo \"  - {{user `ssh_public_key`}}\" >> cloud-config.yml<enter>",
+              "sudo ros install -c cloud-config.yml -d /dev/sda<enter>",
+              "y<enter>",
+              "<wait5>",
+              "y<enter>",
+              "<wait10><wait10><wait10><wait10><wait10><wait10><wait10><wait10><wait10>"
+            ],
+            "export_opts": [
+              "--manifest",
+              "--vsys", "0",
+              "--description", "{{user `vm_description`}}",
+              "--version", "{{user `version`}}"
+            ],
+            "ssh_username": "rancher",
+            "ssh_wait_timeout": "600s",
+            "shutdown_command": "sudo shutdown -h now"
+        }
+    ],
+    "post-processors": [
+        [{
+            "type": "vagrant",
+            "output": "../output/vagrant/x86_64/prod/{{user `version`}}/rancheros_{{.Provider}}.box",
+            "vagrantfile_template": "includes/vagrantfile.tpl"
+        },
+        {
+          "type": "vagrant-cloud",
+          "box_tag": "{{user `organization`}}/rancheros",
+          "access_token": "{{user `cloud_token`}}",
+          "version": "{{user `version`}}"
+        }
+      ]
+    ]
+}
